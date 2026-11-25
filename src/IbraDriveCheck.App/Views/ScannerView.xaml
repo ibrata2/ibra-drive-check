@@ -177,7 +177,7 @@
                             <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressPercent, StringFormat={}{0:0.0}%}" FontWeight="Bold" FontSize="16" FlowDirection="LeftToRight"/>
                             <TextBlock Text="{Binding PhaseText}" FontWeight="SemiBold"/>
                         </DockPanel>
-                        <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" Margin="0,0,0,14"/>
+                        <ProgressBar Value="{Binding ProgressPercent, Mode=OneWay}" Maximum="100" Margin="0,0,0,14"/>
                         <UniformGrid Columns="4">
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock Text="{l:T scan.tested}" Style="{StaticResource Muted}"/>

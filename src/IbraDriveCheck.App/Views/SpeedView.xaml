@@ -57,7 +57,7 @@
                             <TextBlock DockPanel.Dock="Right" Text="{Binding LiveText}" FontWeight="Bold" FlowDirection="LeftToRight"/>
                             <TextBlock Text="{Binding PhaseText}" FontWeight="SemiBold"/>
                         </DockPanel>
-                        <ProgressBar Value="{Binding ProgressPercent}" Maximum="100"/>
+                        <ProgressBar Value="{Binding ProgressPercent, Mode=OneWay}" Maximum="100"/>
                     </StackPanel>
                     <TextBlock Text="{Binding VerdictText}" Margin="0,12,0,0" Visibility="{Binding VerdictText, Converter={StaticResource Vis}}"/>
                 </StackPanel>

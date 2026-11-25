@@ -69,7 +69,7 @@
                             <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressPercent, StringFormat={}{0:0.0}%}" FontWeight="Bold" FlowDirection="LeftToRight"/>
                             <TextBlock Text="{Binding StepText}" FontWeight="SemiBold"/>
                         </DockPanel>
-                        <ProgressBar Value="{Binding ProgressPercent}" Maximum="100"/>
+                        <ProgressBar Value="{Binding ProgressPercent, Mode=OneWay}" Maximum="100"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
