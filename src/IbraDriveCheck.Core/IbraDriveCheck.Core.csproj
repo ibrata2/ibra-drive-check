@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- محرك الفحص: مكتبة مستقلة بدون أي حزم خارجية، حتى يمكن دمجها لاحقاً داخل IBRA CLEAN UP -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>IbraDriveCheck.Core</RootNamespace>
+    <AssemblyName>IbraDriveCheck.Core</AssemblyName>
+    <Version>1.0.0</Version>
+    <Company>IBRAPROGRAM</Company>
+    <Authors>Ibrahim Al-Khazraji</Authors>
+    <Product>IBRA DRIVE CHECK</Product>
+    <NoWarn>$(NoWarn);CA1416;SYSLIB1054</NoWarn>
+  </PropertyGroup>
+
+</Project>

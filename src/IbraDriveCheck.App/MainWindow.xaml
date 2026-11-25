@@ -1,0 +1,75 @@
+<Window x:Class="IbraDriveCheck.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="clr-namespace:IbraDriveCheck.App.Infrastructure"
+        Title="IBRA DRIVE CHECK" Width="1280" Height="820" MinWidth="980" MinHeight="640"
+        WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
+        Background="{DynamicResource WindowBgBrush}" FontFamily="{StaticResource UiFont}"
+        Icon="pack://application:,,,/IbraDriveCheck;component/Assets/icon.png">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Grid x:Name="Root">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- شريط العنوان: نفس الترتيب في العربية والإنجليزية -->
+        <Grid Grid.Row="0" FlowDirection="LeftToRight" Background="{DynamicResource TitleBarBrush}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                <Image Source="pack://application:,,,/IbraDriveCheck;component/Assets/icon.png" Width="20" Height="20" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+                <TextBlock Text="IBRA DRIVE CHECK" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                <Border x:Name="AdminBadge" Background="{DynamicResource AccentSoftBrush}" CornerRadius="6" Padding="8,2" Margin="12,0,0,0" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xEA18;" FontSize="11" Foreground="{DynamicResource AccentBrush}" Margin="0,0,5,0"/>
+                        <TextBlock Text="Administrator" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="OnMinimize" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                <Button x:Name="MaxButton" Style="{StaticResource TitleBarButton}" Content="&#xE922;" Click="OnMaximize" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                <Button Style="{StaticResource TitleBarCloseButton}" Content="&#xE8BB;" Click="OnClose" WindowChrome.IsHitTestVisibleInChrome="True"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- المحتوى: يتبع اتجاه اللغة -->
+        <Grid Grid.Row="1" FlowDirection="{Binding Flow, Source={x:Static l:Loc.I}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="248"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,1,0" CornerRadius="0,14,0,0">
+                <DockPanel Margin="12,14,12,12">
+                    <StackPanel DockPanel.Dock="Top" Margin="6,0,6,16">
+                        <TextBlock Text="{l:T app.tagline}" Style="{StaticResource Muted}"/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Margin="6,8,6,0">
+                        <Button x:Name="AdminButton" Style="{StaticResource DangerOutlineButton}" Padding="10,7" Click="OnRestartAdmin" HorizontalAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xEA18;" FontSize="13" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="{l:T common.restartAdmin}" Foreground="{DynamicResource AccentBrush}" FontSize="12.5"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{l:T about.credit}" Style="{StaticResource Muted}" FontSize="11" Margin="0,10,0,0" TextAlignment="Center"/>
+                    </StackPanel>
+                    <ListBox x:Name="NavList" ItemContainerStyle="{StaticResource NavItem}" SelectionChanged="OnNav">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="{Binding Glyph}" Width="22" Margin="0,0,12,0"/>
+                                    <TextBlock Text="{Binding Title}" FontSize="14" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <ContentControl x:Name="PageHost" Grid.Column="1" Margin="0" Focusable="False"/>
+        </Grid>
+    </Grid>
+</Window>

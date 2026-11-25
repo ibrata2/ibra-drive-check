@@ -1,0 +1,139 @@
+name: Build & Release
+# يبني البرنامج على ويندوز حقيقي، يشغل كل الاختبارات (محاكاة + قرص افتراضي حقيقي)،
+# ينتج ملف التثبيت والنسخة المحمولة، وينشر الإصدار تلقائياً إذا كان رقم الإصدار جديداً.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read version
+        id: ver
+        run: |
+          [xml]$p = Get-Content src/IbraDriveCheck.App/IbraDriveCheck.App.csproj
+          $v = ($p.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Version $v"
+
+      - name: Build
+        run: dotnet build IbraDriveCheck.sln -c Release
+
+      - name: Simulation tests
+        run: dotnet run --project tests/IbraDriveCheck.Tests -c Release --no-build
+
+      - name: Create test virtual disk (T:)
+        run: |
+          $vhd = "$env:RUNNER_TEMP\ibra-test.vhdx"
+          @"
+          create vdisk file="$vhd" maximum=2048 type=expandable
+          select vdisk file="$vhd"
+          attach vdisk
+          create partition primary
+          format fs=exfat quick label=IBRATEST
+          assign letter=T
+          "@ | Set-Content "$env:RUNNER_TEMP\dp.txt" -Encoding ascii
+          diskpart /s "$env:RUNNER_TEMP\dp.txt"
+          Start-Sleep -Seconds 3
+          Get-Volume -DriveLetter T
+
+      - name: Windows integration tests (real IOCTL / WMI / raw I/O on the VHD)
+        env:
+          IBRA_WIN_INTEGRATION: "1"
+          IBRA_TEST_VOLUME: "T:"
+        run: dotnet run --project tests/IbraDriveCheck.Tests -c Release --no-build -- T_Win_
+
+      - name: Publish portable (single self-contained exe)
+        run: >
+          dotnet publish src/IbraDriveCheck.App/IbraDriveCheck.App.csproj -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none -o out/portable
+
+      - name: Smoke test (opens every page in Arabic/English, light/dark)
+        run: |
+          $log = Join-Path $env:TEMP "ibra-drive-check-smoke.log"
+          Remove-Item $log -ErrorAction SilentlyContinue
+          $p = Start-Process out/portable/IbraDriveCheck.exe -ArgumentList "--smoke-test" -PassThru
+          if (-not $p.WaitForExit(180000)) { Stop-Process -Id $p.Id -Force; Write-Error "Smoke test timed out"; exit 1 }
+          if (Test-Path $log) { Get-Content $log }
+          if ($p.ExitCode -ne 0) { Write-Error "Smoke test failed with exit code $($p.ExitCode)"; exit 1 }
+
+      - name: Build installer (NSIS)
+        run: |
+          choco install nsis -y --no-progress
+          $v = "${{ steps.ver.outputs.version }}"
+          $src = (Resolve-Path out/portable/IbraDriveCheck.exe).Path
+          $out = Join-Path (Resolve-Path out).Path "IBRA-DRIVE-CHECK-Setup-$v.exe"
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /V2 "/DVERSION=$v" "/DSRC=$src" "/DOUT=$out" installer\ibra-drive-check.nsi
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Copy-Item out/portable/IbraDriveCheck.exe "out/IBRA-DRIVE-CHECK-Portable-$v.exe"
+          Get-ChildItem out/*.exe | Format-Table Name, Length
+
+      - name: Defender scan of the release files
+        run: |
+          $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
+          if (Test-Path $mp) {
+            & $mp -SignatureUpdate | Out-Null
+            Get-ChildItem out/*.exe | ForEach-Object { & $mp -Scan -ScanType 3 -File $_.FullName -DisableRemediation; Write-Host "$($_.Name): exit $LASTEXITCODE" }
+          } else { Write-Host "Defender CLI not available on this runner" }
+
+      - name: SHA-256 and release notes
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $lines = @()
+          $notes = "releases/notes/$v.md"
+          if (Test-Path $notes) { $lines += Get-Content $notes -Raw -Encoding utf8; $lines += "" }
+          foreach ($f in Get-ChildItem out/IBRA-DRIVE-CHECK-*.exe) {
+            $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
+            $mb = [math]::Round($f.Length / 1MB, 1)
+            "$h  $($f.Name)" | Add-Content out/SHA256SUMS.txt -Encoding ascii
+            $lines += "- ``$($f.Name)`` — $mb MB — SHA-256: ``$h``"
+          }
+          $lines += ""
+          $lines += "Windows 10 / 11 (64-bit) — مجاني، يعمل بدون إنترنت."
+          $lines += ""
+          $lines += "برمجة وتطوير ابراهيم الخزرجي — https://ibraprogram.netlify.app/"
+          $lines -join "`n" | Set-Content out/body.md -Encoding utf8
+          Get-Content out/body.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IBRA-DRIVE-CHECK-${{ steps.ver.outputs.version }}
+          path: |
+            out/IBRA-DRIVE-CHECK-*.exe
+            out/SHA256SUMS.txt
+
+      - name: Check if release exists
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "v${{ steps.ver.outputs.version }}" -R "${{ github.repository }}" 2>$null
+          if ($LASTEXITCODE -eq 0) { "exists=true" >> $env:GITHUB_OUTPUT } else { "exists=false" >> $env:GITHUB_OUTPUT }
+          exit 0
+
+      - uses: softprops/action-gh-release@v2
+        if: steps.rel.outputs.exists == 'false' && github.ref == 'refs/heads/main'
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: IBRA DRIVE CHECK ${{ steps.ver.outputs.version }}
+          body_path: out/body.md
+          files: |
+            out/IBRA-DRIVE-CHECK-Setup-${{ steps.ver.outputs.version }}.exe
+            out/IBRA-DRIVE-CHECK-Portable-${{ steps.ver.outputs.version }}.exe
+            out/SHA256SUMS.txt
+          make_latest: true

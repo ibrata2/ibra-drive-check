@@ -1,0 +1,282 @@
+<UserControl x:Class="IbraDriveCheck.App.Views.ScannerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:IbraDriveCheck.App.Infrastructure"
+             xmlns:c="clr-namespace:IbraDriveCheck.App.Controls">
+    <UserControl.Resources>
+        <l:BoolToVisibility x:Key="Vis"/>
+        <l:BoolToVisibility x:Key="InvVis" Invert="True"/>
+
+        <DataTemplate x:Key="InfoRowTemplate">
+            <Grid Margin="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.9*"/>
+                    <ColumnDefinition Width="1.1*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Label}" Style="{StaticResource Muted}" Margin="0,0,8,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12.5">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Highlight}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </DataTemplate>
+
+        <Style x:Key="KindItem" TargetType="ListBoxItem">
+            <Setter Property="IsEnabled" Value="{Binding IsAllowed}"/>
+            <Setter Property="Margin" Value="0,0,10,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bd" Width="236" MinHeight="128" CornerRadius="14" Padding="14" BorderThickness="1.5"
+                                Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource CardBorderBrush}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource NavSelectedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="LegendDot" TargetType="Border">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="28,22,20,20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="330"/>
+        </Grid.ColumnDefinitions>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,16,0">
+            <StackPanel>
+                <TextBlock Text="{l:T nav.scanner}" Style="{StaticResource H1}"/>
+                <TextBlock Text="{l:T fake.step1}" Style="{StaticResource Muted}" Margin="0,0,0,14"/>
+
+                <!-- اختيار الوحدة -->
+                <DockPanel Margin="0,0,0,12">
+                    <Button DockPanel.Dock="Right" Click="OnRefresh" Margin="10,0,0,0" Padding="12,8" ToolTip="{l:T common.refresh}">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE72C;" FontSize="14"/>
+                    </Button>
+                    <ComboBox ItemsSource="{Binding Main.Drives}" SelectedItem="{Binding Main.SelectedDrive}" DisplayMemberPath="Display"
+                              IsEnabled="{Binding IsNotRunning}"/>
+                </DockPanel>
+
+                <!-- تنبيهات -->
+                <Border Style="{StaticResource FlatCard}" Background="{DynamicResource DangerBgBrush}" Margin="0,0,0,10"
+                        Visibility="{Binding HasPendingRestore, Converter={StaticResource Vis}}">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource AccentButton}" Command="{Binding RestoreCommand}" Content="{l:T scan.restoreNow}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding PendingRestoreText}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource FlatCard}" Background="{DynamicResource WarningBgBrush}" Margin="0,0,0,10"
+                        Visibility="{Binding HasLeftovers, Converter={StaticResource Vis}}">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Command="{Binding DeleteLeftoversCommand}" Content="{l:T common.delete}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        <StackPanel>
+                            <TextBlock Text="{l:T note.tempCleanFailed}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding LeftoversText}" Style="{StaticResource Muted}" FlowDirection="LeftToRight" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource FlatCard}" Margin="0,0,0,12"
+                        Visibility="{Binding Main.IsElevated, Converter={StaticResource InvVis}}">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource DangerOutlineButton}" Command="{Binding RestartAdminCommand}" Content="{l:T common.restartAdmin}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xEA18;" Foreground="{DynamicResource AccentBrush}" Margin="0,0,10,0"/>
+                            <TextBlock Text="{l:T common.adminRequired}" VerticalAlignment="Center" MaxWidth="520"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- نوع الفحص -->
+                <TextBlock Text="{l:T scan.type}" Style="{StaticResource H2}"/>
+                <ListBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding SelectedKind}" ItemContainerStyle="{StaticResource KindItem}"
+                         IsEnabled="{Binding IsNotRunning}" Margin="0,0,0,4">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Style="{StaticResource Icon}" Text="{Binding Glyph}" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding Desc}" Style="{StaticResource Muted}" FontSize="11.5"/>
+                                <TextBlock Text="{Binding BlockedReason}" Foreground="{DynamicResource AccentBrush}" FontSize="11.5" Margin="0,6,0,0"
+                                           Visibility="{Binding IsAllowed, Converter={StaticResource InvVis}}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Visibility="{Binding ShowReadOnlyMode, Converter={StaticResource Vis}}">
+                    <TextBlock Text="{l:T scan.readOnlyMode}" VerticalAlignment="Center" Margin="0,0,14,0" FontWeight="SemiBold"/>
+                    <RadioButton Content="{l:T scan.readOnlyFull}" IsChecked="{Binding ReadOnlyFull}" GroupName="ro"/>
+                    <RadioButton Content="{l:T scan.readOnlySampled}" IsChecked="{Binding ReadOnlySampled}" GroupName="ro"/>
+                </StackPanel>
+
+                <!-- أزرار التحكم -->
+                <WrapPanel Margin="0,4,0,14">
+                    <Button Style="{StaticResource AccentButton}" Command="{Binding StartCommand}" Margin="0,0,10,0" Padding="22,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE768;" Foreground="White" FontSize="13" Margin="0,0,8,0"/>
+                            <TextBlock Text="{l:T scan.start}" Foreground="White"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding PauseCommand}" Margin="0,0,10,0" Padding="16,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE769;" FontSize="13" Margin="0,0,8,0"/>
+                            <TextBlock Text="{l:T scan.pause}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ResumeCommand}" Margin="0,0,10,0" Padding="16,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE768;" FontSize="13" Margin="0,0,8,0"/>
+                            <TextBlock Text="{l:T scan.resume}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource DangerOutlineButton}" Command="{Binding CancelCommand}" Padding="16,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE71A;" FontSize="13" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="{l:T scan.cancel}" Foreground="{DynamicResource AccentBrush}"/>
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+
+                <!-- المتابعة المباشرة -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressPercent, StringFormat={}{0:0.0}%}" FontWeight="Bold" FontSize="16" FlowDirection="LeftToRight"/>
+                            <TextBlock Text="{Binding PhaseText}" FontWeight="SemiBold"/>
+                        </DockPanel>
+                        <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" Margin="0,0,0,14"/>
+                        <UniformGrid Columns="4">
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="{l:T scan.tested}" Style="{StaticResource Muted}"/>
+                                <TextBlock Text="{Binding TestedText}" FontWeight="SemiBold" FontSize="15" FlowDirection="LeftToRight" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="{l:T scan.goodCells}" Style="{StaticResource Muted}"/>
+                                <TextBlock Text="{Binding GoodText}" FontWeight="SemiBold" FontSize="15" Foreground="#16A34A"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="{l:T scan.badCells}" Style="{StaticResource Muted}"/>
+                                <TextBlock Text="{Binding BadText}" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource AccentBrush}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="{l:T scan.elapsed}" Style="{StaticResource Muted}"/>
+                                <TextBlock Text="{Binding ElapsedText}" FontWeight="SemiBold" FontSize="15" FlowDirection="LeftToRight" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{l:T scan.read}" Style="{StaticResource Muted}"/>
+                                <TextBlock Text="{Binding ReadText}" FontWeight="SemiBold" FontSize="15" FlowDirection="LeftToRight" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{l:T scan.write}" Style="{StaticResource Muted}"/>
+                                <TextBlock Text="{Binding WriteText}" FontWeight="SemiBold" FontSize="15" FlowDirection="LeftToRight" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{l:T scan.remaining}" Style="{StaticResource Muted}"/>
+                                <TextBlock Text="{Binding RemainingText}" FontWeight="SemiBold" FontSize="15" FlowDirection="LeftToRight" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- النتيجة -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,14" Visibility="{Binding HasResult, Converter={StaticResource Vis}}">
+                    <StackPanel>
+                        <Border CornerRadius="12" Padding="16,12" Background="{Binding VerdictBrush}" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Icon}" Text="{Binding VerdictGlyph}" Foreground="White" FontSize="24" Margin="0,0,14,0"/>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding VerdictText}" Foreground="White" FontSize="20" FontWeight="Bold"/>
+                                    <TextBlock Text="{Binding VerdictHint}" Foreground="White" Opacity="0.92"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <ItemsControl ItemsSource="{Binding ResultRows}" ItemTemplate="{StaticResource InfoRowTemplate}" Margin="0,0,0,10"/>
+                        <TextBlock Text="{l:T res.notes}" Style="{StaticResource H2}" Margin="0,4,0,6"/>
+                        <ItemsControl ItemsSource="{Binding ResultNotes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,2">
+                                        <TextBlock DockPanel.Dock="Left" Text="•" Margin="0,0,8,0" Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="{Binding}"/>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- خريطة الفحص -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="{l:T scan.mapHint}" Style="{StaticResource Muted}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T scan.map}" Style="{StaticResource H2}"/>
+                        </DockPanel>
+                        <WrapPanel Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4"><Border Style="{StaticResource LegendDot}" Background="{StaticResource CellGood}"/><TextBlock Text="{l:T state.Good}" FontSize="12"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4"><Border Style="{StaticResource LegendDot}" Background="{StaticResource CellFailed}"/><TextBlock Text="{l:T state.Failed}" FontSize="12"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4"><Border Style="{StaticResource LegendDot}" Background="{StaticResource CellWriteError}"/><TextBlock Text="{l:T state.WriteError}" FontSize="12"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4"><Border Style="{StaticResource LegendDot}" Background="{StaticResource CellReadError}"/><TextBlock Text="{l:T state.ReadError}" FontSize="12"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4"><Border Style="{StaticResource LegendDot}" Background="{StaticResource CellSlow}"/><TextBlock Text="{l:T state.Slow}" FontSize="12"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4"><Border Style="{StaticResource LegendDot}" Background="{StaticResource CellTesting}"/><TextBlock Text="{l:T state.Testing}" FontSize="12"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,14,4"><Border Style="{StaticResource LegendDot}" Background="{StaticResource CellUntested}"/><TextBlock Text="{l:T state.Untested}" FontSize="12"/></StackPanel>
+                        </WrapPanel>
+                        <c:ScanMapControl x:Name="Map" LiveMap="{Binding LiveMap}" Records="{Binding Records}" Version="{Binding MapVersion}"
+                                          SelectedIndex="{Binding SelectedCell, Mode=TwoWay}" MinHeight="40"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- اللوحة الجانبية: معلومات الوحدة وتفاصيل المربع -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,14" Visibility="{Binding HasCellDetails, Converter={StaticResource Vis}}">
+                    <StackPanel>
+                        <TextBlock Text="{l:T common.details}" Style="{StaticResource H2}"/>
+                        <ItemsControl ItemsSource="{Binding CellDetails}" ItemTemplate="{StaticResource InfoRowTemplate}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="{l:T scan.driveInfo}" Style="{StaticResource H2}"/>
+                        <ItemsControl ItemsSource="{Binding DriveInfo}" ItemTemplate="{StaticResource InfoRowTemplate}"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
