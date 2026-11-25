@@ -9,6 +9,9 @@ namespace IbraDriveCheck.Core.Devices.Windows;
 [SupportedOSPlatform("windows")]
 public static class Wmi
 {
+    /// <summary>آخر خطأ WMI (للتشخيص فقط).</summary>
+    public static string? LastError { get; private set; }
+
     public static List<Dictionary<string, object?>> Query(string ns, string wql)
     {
         var list = new List<Dictionary<string, object?>>();
@@ -29,9 +32,10 @@ public static class Wmi
                 list.Add(d);
             }
         }
-        catch
+        catch (Exception ex)
         {
             // WMI غير متاح أو يحتاج صلاحيات
+            LastError = ex.GetType().Name + ": " + ex.Message;
         }
         return list;
     }

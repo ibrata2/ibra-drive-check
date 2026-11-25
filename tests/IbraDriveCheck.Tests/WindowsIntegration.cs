@@ -47,7 +47,7 @@ public static partial class Tests
         var h = HealthReader.Read(sys);
         Console.WriteLine($"        health status={h.HealthStatus} smart={h.SmartSupported} nvme={h.NvmeLogAvailable} temp={h.TemperatureC} hours={h.PowerOnHours}");
         var s = SystemInfoReader.Read(sys);
-        Console.WriteLine($"        os={s.Os} cpu={s.Cpu} fw={s.FirmwareType} board={s.Board}");
+        Console.WriteLine($"        os={s.Os} cpu={s.Cpu} fw={s.FirmwareType} board={s.Board} wmiError={Wmi.LastError}");
         Assert.True(s.Os != null, "OS name via WMI");
     }
 
