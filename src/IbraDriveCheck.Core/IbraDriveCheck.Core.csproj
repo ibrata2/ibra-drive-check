@@ -16,4 +16,12 @@
     <NoWarn>$(NoWarn);CA1416;SYSLIB1054</NoWarn>
   </PropertyGroup>
 
+  <!-- على ويندوز نستخدم System.Management الرسمية من مايكروسوفت لـ WMI؛ على غير ويندوز (للاختبارات فقط) يبقى مسار COM الاحتياطي -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <DefineConstants>$(DefineConstants);HAS_SYSMGMT</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+    <PackageReference Include="System.Management" Version="10.0.0" />
+  </ItemGroup>
+
 </Project>

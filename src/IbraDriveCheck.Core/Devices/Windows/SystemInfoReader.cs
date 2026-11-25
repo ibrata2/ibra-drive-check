@@ -53,40 +53,18 @@ public static class SystemInfoReader
             }
             if (pciId == null) return;
 
-            var t = Type.GetTypeFromProgID("WbemScripting.SWbemLocator");
-            if (t == null) return;
-            dynamic locator = Activator.CreateInstance(t)!;
-            dynamic svc = locator.ConnectServer(".", @"root\cimv2");
-            string escaped = pciId.Replace("\\", "\\\\").Replace("'", "\\'");
-            dynamic rows = svc.ExecQuery($"SELECT * FROM Win32_PnPEntity WHERE DeviceID = '{escaped}'");
-            foreach (dynamic row in rows)
+            var props = Wmi.DeviceProperties(pciId,
+                "DEVPKEY_PciDevice_CurrentLinkSpeed", "DEVPKEY_PciDevice_CurrentLinkWidth",
+                "DEVPKEY_PciDevice_MaxLinkSpeed", "DEVPKEY_PciDevice_MaxLinkWidth");
+            int? Get(string k)
             {
-                dynamic method = row.Methods_.Item("GetDeviceProperties");
-                dynamic inParams = method.InParameters.SpawnInstance_();
-                inParams.devicePropertyKeys = new object[]
-                {
-                    "DEVPKEY_PciDevice_CurrentLinkSpeed", "DEVPKEY_PciDevice_CurrentLinkWidth",
-                    "DEVPKEY_PciDevice_MaxLinkSpeed", "DEVPKEY_PciDevice_MaxLinkWidth",
-                };
-                dynamic outParams = row.ExecMethod_("GetDeviceProperties", inParams);
-                object props = outParams.deviceProperties;
-                if (props is not Array arr) break;
-                foreach (dynamic p in arr)
-                {
-                    string key = (string)p.KeyName;
-                    int? v = null;
-                    try { v = Convert.ToInt32((object)p.Data); } catch { }
-                    if (v is null or <= 0) continue;
-                    switch (key)
-                    {
-                        case "DEVPKEY_PciDevice_CurrentLinkSpeed": s.LinkGenCurrent = v; break;
-                        case "DEVPKEY_PciDevice_CurrentLinkWidth": s.LinkWidthCurrent = v; break;
-                        case "DEVPKEY_PciDevice_MaxLinkSpeed": s.LinkGenMax = v; break;
-                        case "DEVPKEY_PciDevice_MaxLinkWidth": s.LinkWidthMax = v; break;
-                    }
-                }
-                break;
+                if (!props.TryGetValue(k, out var v) || v == null) return null;
+                try { int x = Convert.ToInt32(v); return x > 0 ? x : null; } catch { return null; }
             }
+            s.LinkGenCurrent = Get("DEVPKEY_PciDevice_CurrentLinkSpeed");
+            s.LinkWidthCurrent = Get("DEVPKEY_PciDevice_CurrentLinkWidth");
+            s.LinkGenMax = Get("DEVPKEY_PciDevice_MaxLinkSpeed");
+            s.LinkWidthMax = Get("DEVPKEY_PciDevice_MaxLinkWidth");
         }
         catch
         {

@@ -15,6 +15,31 @@ public static class Wmi
     public static List<Dictionary<string, object?>> Query(string ns, string wql)
     {
         var list = new List<Dictionary<string, object?>>();
+#if HAS_SYSMGMT
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(ns, wql);
+            searcher.Options.Timeout = TimeSpan.FromSeconds(15);
+            using var results = searcher.Get();
+            foreach (System.Management.ManagementBaseObject row in results)
+            {
+                using (row)
+                {
+                    var d = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var p in row.Properties)
+                    {
+                        try { d[p.Name] = p.Value; } catch { }
+                    }
+                    list.Add(d);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.GetType().Name + ": " + ex.Message;
+        }
+        return list;
+#else
         try
         {
             var t = Type.GetTypeFromProgID("WbemScripting.SWbemLocator");
@@ -38,6 +63,40 @@ public static class Wmi
             LastError = ex.GetType().Name + ": " + ex.Message;
         }
         return list;
+#endif
+    }
+
+    /// <summary>خصائص جهاز PnP بالاسم (مثل DEVPKEY_PciDevice_CurrentLinkSpeed) عبر Win32_PnPEntity.GetDeviceProperties.</summary>
+    public static Dictionary<string, object?> DeviceProperties(string pnpId, params string[] keys)
+    {
+        var res = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+#if HAS_SYSMGMT
+        try
+        {
+            string escaped = pnpId.Replace("\\", "\\\\").Replace("'", "\\'");
+            using var searcher = new System.Management.ManagementObjectSearcher(@"root\cimv2", $"SELECT * FROM Win32_PnPEntity WHERE DeviceID = '{escaped}'");
+            foreach (System.Management.ManagementObject dev in searcher.Get())
+            {
+                using (dev)
+                {
+                    var inParams = dev.GetMethodParameters("GetDeviceProperties");
+                    inParams["devicePropertyKeys"] = keys;
+                    var outParams = dev.InvokeMethod("GetDeviceProperties", inParams, null);
+                    if (outParams?["deviceProperties"] is System.Management.ManagementBaseObject[] props)
+                        foreach (var p in props)
+                        {
+                            try { res[(string)p["KeyName"]] = p["Data"]; } catch { }
+                        }
+                }
+                break;
+            }
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.GetType().Name + ": " + ex.Message;
+        }
+#endif
+        return res;
     }
 
     public static string? Str(this Dictionary<string, object?> d, string key)
