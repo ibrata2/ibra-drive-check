@@ -23,7 +23,7 @@
     <Authors>Ibrahim Al-Khazraji</Authors>
     <Copyright>© Ibrahim Al-Khazraji — ibraprogram.netlify.app</Copyright>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <NoWarn>$(NoWarn);CA1416;WFAC010</NoWarn>
+    <NoWarn>$(NoWarn);CA1416;WFAC010;WFO0003</NoWarn>
     <!-- النسخة المنشورة: ملف واحد مستقل (لا يحتاج تثبيت .NET) بدون UPX أو أي تمويه -->
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>

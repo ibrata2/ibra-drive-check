@@ -347,7 +347,7 @@ public sealed class ScannerViewModel : ObservableObject
     {
         foreach (var d in _leftoverDirs)
         {
-            try { Directory.Delete(d, true); } catch { }
+            try { System.IO.Directory.Delete(d, true); } catch { }
         }
         OnDriveChanged(refreshHealth: false);
     }
