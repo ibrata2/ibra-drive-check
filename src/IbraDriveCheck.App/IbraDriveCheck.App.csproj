@@ -32,6 +32,7 @@
     <!-- نستخدم WinForms فقط لأيقونة الإشعارات؛ نمنع الـ usings العامة حتى لا تتعارض أسماء WPF -->
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
+    <Using Include="System.IO" />
   </ItemGroup>
 
   <ItemGroup>
