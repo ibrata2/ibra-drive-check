@@ -92,6 +92,8 @@ public sealed class ScannerViewModel : ObservableObject
     public string VerdictHint => _result == null ? "" : Strings.VerdictHint(Loc.I.Lang, _result.Verdict);
     public Brush VerdictBrush => _result == null ? Brushes.Gray : VerdictColors.For(_result.Verdict);
     public string VerdictGlyph => _result == null ? "" : VerdictColors.Glyph(_result.Verdict);
+    public bool ShowFix => _result?.Verdict == Verdict.FakeCapacity;
+    public RelayCommand FixCommand { get; } = new(() => MainViewModel.I.Navigate("tools"));
     public ObservableCollection<InfoRow> ResultRows { get; } = new();
     public ObservableCollection<string> ResultNotes { get; } = new();
 
@@ -298,7 +300,7 @@ public sealed class ScannerViewModel : ObservableObject
 
     private void RaiseResult()
     {
-        Raise(nameof(HasResult)); Raise(nameof(VerdictText)); Raise(nameof(VerdictHint)); Raise(nameof(VerdictBrush)); Raise(nameof(VerdictGlyph));
+        Raise(nameof(HasResult)); Raise(nameof(VerdictText)); Raise(nameof(VerdictHint)); Raise(nameof(VerdictBrush)); Raise(nameof(VerdictGlyph)); Raise(nameof(ShowFix));
         ResultRows.Clear();
         ResultNotes.Clear();
         var r = _result;

@@ -63,6 +63,8 @@ public sealed class PurchaseViewModel : ObservableObject
         AdviceLevel.DoNotBuy => "",
         _ => "",
     };
+    public bool ShowFix => _result?.Verdict == Verdict.FakeCapacity;
+    public RelayCommand FixCommand { get; } = new(() => MainViewModel.I.Navigate("tools"));
     public ObservableCollection<CheckRow> Checks { get; } = new();
     public ObservableCollection<CheckRow> Compat { get; } = new();
     public ObservableCollection<InfoRow> SystemRows { get; } = new();
@@ -167,6 +169,7 @@ public sealed class PurchaseViewModel : ObservableObject
             {
                 r.EstimatedRealBytes = cap.EstimatedRealBytes;
                 r.EstimatedFakeBytes = cap.EstimatedFakeBytes;
+                r.EstimateFromWrap = cap.EstimateFromWrap;
                 r.VerifiedBytes = cap.VerifiedBytes;
                 r.CoveragePercent = cap.CoveragePercent;
                 r.SampleCount = cap.SampleCount;
@@ -215,7 +218,7 @@ public sealed class PurchaseViewModel : ObservableObject
 
     private void Refill()
     {
-        Raise(nameof(HasResult)); Raise(nameof(LevelText)); Raise(nameof(LevelHint)); Raise(nameof(LevelBrush)); Raise(nameof(LevelGlyph));
+        Raise(nameof(HasResult)); Raise(nameof(LevelText)); Raise(nameof(LevelHint)); Raise(nameof(LevelBrush)); Raise(nameof(LevelGlyph)); Raise(nameof(ShowFix));
         Checks.Clear(); Compat.Clear(); SystemRows.Clear();
         var a = _result?.Advice;
         if (a != null)

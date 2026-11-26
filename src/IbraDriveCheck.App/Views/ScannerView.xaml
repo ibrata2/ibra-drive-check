@@ -223,6 +223,13 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
+                        <Button Style="{StaticResource AccentButton}" Command="{Binding FixCommand}" HorizontalAlignment="Left" Padding="18,9" Margin="0,0,0,12"
+                                Visibility="{Binding ShowFix, Converter={StaticResource Vis}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE90F;" Foreground="White" FontSize="13" Margin="0,0,8,0"/>
+                                <TextBlock Text="{l:T tools.fixButton}" Foreground="White"/>
+                            </StackPanel>
+                        </Button>
                         <ItemsControl ItemsSource="{Binding ResultRows}" ItemTemplate="{StaticResource InfoRowTemplate}" Margin="0,0,0,10"/>
                         <TextBlock Text="{l:T res.notes}" Style="{StaticResource H2}" Margin="0,4,0,6"/>
                         <ItemsControl ItemsSource="{Binding ResultNotes}">

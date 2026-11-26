@@ -14,8 +14,8 @@
     <RootNamespace>IbraDriveCheck.App</RootNamespace>
     <ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.0</Version>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
     <Product>IBRA DRIVE CHECK</Product>
     <AssemblyTitle>IBRA DRIVE CHECK</AssemblyTitle>
     <Description>IBRA DRIVE CHECK — storage verification and fake capacity detection</Description>

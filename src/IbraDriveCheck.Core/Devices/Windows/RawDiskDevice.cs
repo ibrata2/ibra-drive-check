@@ -29,9 +29,13 @@ public sealed unsafe class RawDiskDevice : IBlockDevice
 
     internal SafeFileHandle Handle => _h;
 
-    public static RawDiskDevice Open(int diskNumber, bool write)
+    public static RawDiskDevice Open(int diskNumber, bool write) => OpenPath($@"\\.\PhysicalDrive{diskNumber}", write, diskNumber);
+
+    /// <summary>يفتح قسماً بحرفه (مثل "E:") للقراءة/الكتابة المباشرة.</summary>
+    public static RawDiskDevice OpenVolume(string letter, bool write) => OpenPath($@"\\.\{letter.TrimEnd('\\').TrimEnd(':')}:", write, -1);
+
+    public static RawDiskDevice OpenPath(string path, bool write, int diskNumber)
     {
-        string path = $@"\\.\PhysicalDrive{diskNumber}";
         uint access = Native.GENERIC_READ | (write ? Native.GENERIC_WRITE : 0);
         var h = Native.Open(path, access, Native.FILE_FLAG_NO_BUFFERING | Native.FILE_FLAG_WRITE_THROUGH);
         if (h.IsInvalid)
