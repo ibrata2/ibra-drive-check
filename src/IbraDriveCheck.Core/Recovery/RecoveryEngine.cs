@@ -20,7 +20,7 @@ public static class RecoveryEngine
         return FatScanner.Detect(boot);
     }
 
-    public static RecoveryScan Scan(IVolumeSource src, bool deep, RecoveryProgress p, CancellationToken ct)
+    public static RecoveryScan Scan(IVolumeSource src, bool deep, RecoveryProgress p, CancellationToken ct, bool includeLive = false)
     {
         p.Phase = "rec.phase.detect";
         string? fs = DetectFileSystem(src);
@@ -34,7 +34,7 @@ public static class RecoveryEngine
             {
                 case "NTFS":
                 {
-                    var s = new NtfsScanner(src, p);
+                    var s = new NtfsScanner(src, p, includeLive);
                     scan = s.Scan(ct);
                     allocated = s.IsAllocatedOffset;
                     unit = s.ClusterSize;
@@ -42,7 +42,7 @@ public static class RecoveryEngine
                 }
                 case "exFAT":
                 {
-                    var s = new ExFatScanner(src, p);
+                    var s = new ExFatScanner(src, p, includeLive);
                     scan = s.Scan(ct);
                     allocated = s.IsAllocatedOffset;
                     dataStart = s.HeapOffset;
@@ -52,7 +52,7 @@ public static class RecoveryEngine
                 case "FAT32":
                 case "FAT16":
                 {
-                    var s = new FatScanner(src, p);
+                    var s = new FatScanner(src, p, includeLive);
                     scan = s.Scan(ct);
                     allocated = s.IsAllocatedOffset;
                     dataStart = s.DataStart;

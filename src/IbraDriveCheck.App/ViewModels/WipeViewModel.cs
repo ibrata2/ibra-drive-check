@@ -59,6 +59,7 @@ public sealed class WipeViewModel : ObservableObject
         StartCommand = new RelayCommand(() => _ = WipeAsync(), () => IsIdle && Main.IsIdle && SelectedVolume != null && (ScrubNames || WipeFree || DeleteUsn));
         VerifyCommand = new RelayCommand(() => _ = VerifyAsync(), () => IsIdle && Main.IsIdle && SelectedVolume != null);
         CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
+        MainViewModel.I.CancelCommands.Add(CancelCommand);
         AddFilesCommand = new RelayCommand(AddFiles, () => IsIdle);
         AddFolderCommand = new RelayCommand(AddFolder, () => IsIdle);
         RemoveCommand = new RelayCommand(() => { if (SelectedShred != null) ShredList.Remove(SelectedShred); }, () => IsIdle && SelectedShred != null);

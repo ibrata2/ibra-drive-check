@@ -42,7 +42,19 @@ public partial class App : Application
 
         var w = new MainWindow();
         MainWindow = w;
+        bool tray = e.Args.Contains("--tray") && MainViewModel.I.Settings.MonitorEnabled;
+        if (tray)
+        {
+            // تشغيل مع ويندوز: يبدأ مخفياً بجانب الساعة
+            w.ShowInTaskbar = false;
+            w.WindowState = WindowState.Minimized;
+        }
         w.Show();
+        if (tray)
+        {
+            w.Hide();
+            w.WindowState = WindowState.Normal;
+        }
     }
 
     private void OnUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)

@@ -154,6 +154,7 @@ public sealed class RecoveryViewModel : ObservableObject
         _timer.Tick += (_, _) => Tick();
         ScanCommand = new RelayCommand(() => _ = ScanAsync(), () => IsIdle && Main.IsIdle && SelectedVolume != null);
         CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
+        MainViewModel.I.CancelCommands.Add(CancelCommand);
         RecoverCommand = new RelayCommand(() => _ = RecoverAsync(), () => IsIdle && _scan != null && Roots.Count > 0);
         SelectAllCommand = new RelayCommand(() => { foreach (var r in Roots) r.IsChecked = true; }, () => Roots.Count > 0);
         SelectNoneCommand = new RelayCommand(() => { foreach (var r in Roots) r.IsChecked = false; }, () => Roots.Count > 0);
@@ -170,6 +171,7 @@ public sealed class RecoveryViewModel : ObservableObject
 
     public void LoadVolumes()
     {
+        if (SelectedVolume?.IsRescue == true) return;
         var keep = SelectedVolume?.Letter ?? SelectedVolume?.Drive.HardwareKey;
         Volumes.Clear();
         foreach (var v in VolumeOption.From(Main.Drives, includeWholeDisks: true)) Volumes.Add(v);
@@ -187,13 +189,24 @@ public sealed class RecoveryViewModel : ObservableObject
         return false;
     }
 
-    private IVolumeSource Open(VolumeOption v) => v.IsWholeDisk ? VolumeTools.OpenDiskSource(v.Drive.DiskNumber) : VolumeTools.OpenVolumeSource(v.Letter!);
+    private static IVolumeSource Open(VolumeOption v) => v.Open();
+
+    /// <summary>من صفحة الإنقاذ: يفتح قسماً مفقوداً/تالفاً هنا ويبدأ البحث (يعرض كل الملفات وليس المحذوفة فقط).</summary>
+    public void OpenRescue(VolumeOption option)
+    {
+        foreach (var old in Volumes.Where(v => v.IsRescue).ToList()) Volumes.Remove(old);
+        Volumes.Insert(0, option);
+        SelectedVolume = option;
+        Deep = false;
+        _ = ScanAsync();
+    }
 
     private async Task ScanAsync()
     {
         var v = SelectedVolume;
         if (v == null || !EnsureAdmin("recovery")) return;
         bool deep = Deep || v.IsWholeDisk;
+        bool live = v.IsRescue;
         _cts = new CancellationTokenSource();
         _progressSrc = new RecoveryProgress();
         IsBusy = true;
@@ -210,7 +223,7 @@ public sealed class RecoveryViewModel : ObservableObject
             _scan = await Task.Run(() =>
             {
                 using var src = Open(v);
-                return RecoveryEngine.Scan(src, deep, p, ct);
+                return RecoveryEngine.Scan(src, deep, p, ct, includeLive: live);
             });
             _scannedVolume = v;
             Rebuild();
@@ -326,7 +339,7 @@ public sealed class RecoveryViewModel : ObservableObject
         try { outRoot = Path.GetFullPath(OutputFolder); }
         catch { TestExecution.Msg(Loc.T("rec.badOutput"), true); return; }
         string outDrive = (Path.GetPathRoot(outRoot) ?? "").TrimEnd('\\').ToUpperInvariant();
-        var sameDisk = v.IsWholeDisk ? v.Drive.Volumes.Select(x => x.Letter.ToUpperInvariant()) : new[] { v.Letter!.ToUpperInvariant() };
+        var sameDisk = v.IsWholeDisk || v.IsRescue ? v.Drive.Volumes.Select(x => x.Letter.ToUpperInvariant()) : new[] { v.Letter!.ToUpperInvariant() };
         if (sameDisk.Contains(outDrive)) { TestExecution.Msg(Loc.T("rec.sameDrive"), true); return; }
         if (!EnsureAdmin("recovery")) return;
 

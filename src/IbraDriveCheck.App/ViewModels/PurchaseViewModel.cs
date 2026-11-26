@@ -84,6 +84,7 @@ public sealed class PurchaseViewModel : ObservableObject
         _timer.Tick += (_, _) => Tick();
         RunCommand = new RelayCommand(() => _ = RunAsync(), () => !IsRunning && Main.IsIdle && Main.SelectedDrive != null);
         CancelCommand = new RelayCommand(() => { _cts?.Cancel(); _session?.Pause.Resume(); }, () => IsRunning);
+        MainViewModel.I.CancelCommands.Add(CancelCommand);
         Loc.I.LanguageChanged += Refill;
         Main.SelectedDriveChanged += () =>
         {

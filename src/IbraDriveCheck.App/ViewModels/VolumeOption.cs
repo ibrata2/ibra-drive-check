@@ -10,12 +10,37 @@ public sealed class VolumeOption
 {
     public DriveSnapshot Drive { get; init; } = new();
     public VolumeSnapshot? Volume { get; init; }
-    public bool IsWholeDisk => Volume == null;
+    /// <summary>قسم مفقود أو تالف عُثر عليه بالإنقاذ.</summary>
+    public IbraDriveCheck.Core.Recovery.FsCandidate? Candidate { get; init; }
+    public bool IsWholeDisk => Volume == null && Candidate == null;
+    public bool IsRescue => Candidate != null;
     public string? Letter => Volume?.Letter;
-    public string FileSystem => Volume?.FileSystem ?? "RAW";
+    public string FileSystem => Candidate?.FileSystem ?? Volume?.FileSystem ?? "RAW";
     public bool IsSystem => Volume != null && VolumeTools.IsSystemVolume(Volume.Letter) || Volume == null && Drive.IsSystemDisk;
 
-    public string Display => Volume != null
+    public IbraDriveCheck.Core.Recovery.IVolumeSource Open()
+    {
+        if (Candidate != null)
+        {
+            var disk = VolumeTools.OpenDiskSource(Drive.DiskNumber);
+            var inner = IbraDriveCheck.Core.Recovery.RescueEngine.Open(disk, Candidate);
+            return new OwnedSource(inner, disk);
+        }
+        return IsWholeDisk ? VolumeTools.OpenDiskSource(Drive.DiskNumber) : VolumeTools.OpenVolumeSource(Letter!);
+    }
+
+    private sealed class OwnedSource : IbraDriveCheck.Core.Recovery.IVolumeSource
+    {
+        private readonly IbraDriveCheck.Core.Recovery.IVolumeSource _a, _b;
+        public OwnedSource(IbraDriveCheck.Core.Recovery.IVolumeSource a, IbraDriveCheck.Core.Recovery.IVolumeSource b) { _a = a; _b = b; }
+        public long Size => _a.Size;
+        public void ReadAt(long offset, Span<byte> destination) => _a.ReadAt(offset, destination);
+        public void Dispose() { _a.Dispose(); _b.Dispose(); }
+    }
+
+    public string Display => Candidate != null
+        ? $"{Loc.T("rescue.found")}: {Candidate.FileSystem} @ {Fmt.Bytes(Candidate.Offset)} ({Fmt.Bytes(Candidate.Size)}) — {Drive.DisplayName}"
+        : Volume != null
         ? $"{Volume.Letter}  {(Volume.Label.Length > 0 ? Volume.Label : "")}  ({Volume.FileSystem}, {Fmt.Bytes(Volume.TotalBytes)})  —  {Drive.DisplayName}"
         : $"{Loc.T("rec.wholeDisk")}: {Drive.DisplayName} ({Fmt.Bytes(Drive.DeclaredBytes)})";
 

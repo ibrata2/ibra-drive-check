@@ -86,7 +86,7 @@ public sealed class Carver
         _ => "Archives",
     };
 
-    private static string? Sniff(ReadOnlySpan<byte> h)
+    public static string? Sniff(ReadOnlySpan<byte> h)
     {
         if (h[0] == 0xFF && h[1] == 0xD8 && h[2] == 0xFF && (h[3] & 0xF0) == 0xE0 || h[0] == 0xFF && h[1] == 0xD8 && h[2] == 0xFF && h[3] == 0xDB) return "jpg";
         if (h[..8].SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })) return "png";
@@ -98,7 +98,8 @@ public sealed class Carver
         return null;
     }
 
-    private long Measure(string kind, long at, long end) => kind switch
+    /// <summary>طول الملف من بنيته (أو -1 إذا كانت البنية تالفة). يستخدم أيضاً لفحص الملفات التالفة.</summary>
+    public long Measure(string kind, long at, long end) => kind switch
     {
         "jpg" => Jpeg(at, Math.Min(end, at + (128L << 20))),
         "png" => Png(at, Math.Min(end, at + (512L << 20))),
@@ -113,13 +114,14 @@ public sealed class Carver
     private long Jpeg(long at, long max)
     {
         long p = at + 2;
-        while (p + 4 <= max)
+        while (p + 2 <= max)
         {
             if (_r[p] != 0xFF) return -1;
             byte m = _r[p + 1];
             if (m == 0xFF) { p++; continue; }
             if (m == 0xD9) return p + 2 - at;
             if (m is >= 0xD0 and <= 0xD7 or 0x01) { p += 2; continue; }
+            if (p + 4 > max) return -1;
             int len = _r[p + 2] << 8 | _r[p + 3];
             if (len < 2) return -1;
             p += 2 + len;

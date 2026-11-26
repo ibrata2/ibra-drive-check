@@ -1,0 +1,71 @@
+<UserControl x:Class="IbraDriveCheck.App.Views.CloneView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:IbraDriveCheck.App.Infrastructure"
+             xmlns:c="clr-namespace:IbraDriveCheck.App.Controls">
+    <UserControl.Resources>
+        <l:BoolToVisibility x:Key="Vis"/>
+        <l:BoolToVisibility x:Key="InvVis" Invert="True"/>
+        <DataTemplate x:Key="InfoRowTemplate">
+            <Grid Margin="0,3">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="0.9*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Label}" Style="{StaticResource Muted}" FontSize="13" Margin="0,0,8,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="13"/>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28,10,28,28" MaxWidth="1040" HorizontalAlignment="Left">
+            <TextBlock Text="{l:T clone.title}" Style="{StaticResource H1}"/>
+            <TextBlock Text="{l:T clone.intro}" Style="{StaticResource Muted}" FontSize="13" Margin="0,0,0,16"/>
+            <ComboBox ItemsSource="{Binding Main.Drives}" SelectedItem="{Binding Main.SelectedDrive}" DisplayMemberPath="Display" IsEnabled="{Binding IsIdle}" Margin="0,0,0,14"/>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="{l:T clone.createTitle}" Style="{StaticResource H2}"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <Button DockPanel.Dock="Right" Command="{Binding BrowseCommand}" Content="{l:T rec.browse}" Padding="12,7" Margin="10,0,0,0"/>
+                        <TextBlock DockPanel.Dock="Left" Text="{l:T rec.output}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBox Text="{Binding Folder, UpdateSourceTrigger=PropertyChanged}" FlowDirection="LeftToRight"/>
+                    </DockPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <RadioButton GroupName="fmt" IsChecked="{Binding AsVhd}" Content="{l:T clone.vhd}"/>
+                        <RadioButton GroupName="fmt" IsChecked="{Binding AsImg}" Content="{l:T clone.img}"/>
+                    </StackPanel>
+                    <WrapPanel>
+                        <Button Style="{StaticResource AccentButton}" Command="{Binding CreateCommand}" Padding="18,9" Margin="0,0,10,8">
+                            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" FontSize="13" Foreground="White" Margin="0,0,8,0"/><TextBlock Text="{l:T clone.create}" Foreground="White"/></StackPanel>
+                        </Button>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="{l:T clone.restoreTitle}" Style="{StaticResource H2}"/>
+                    <DockPanel Margin="0,0,0,10">
+                        <Button DockPanel.Dock="Right" Command="{Binding PickImageCommand}" Content="{l:T clone.pick}" Padding="12,7" Margin="10,0,0,0"/>
+                        <TextBox Text="{Binding ImagePath, UpdateSourceTrigger=PropertyChanged}" FlowDirection="LeftToRight"/>
+                    </DockPanel>
+                    <WrapPanel>
+                        <Button Style="{StaticResource BaseButton}" Command="{Binding RestoreCommand}" Padding="18,9" Margin="0,0,10,8">
+                            <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE777;" FontSize="13" Margin="0,0,8,0"/><TextBlock Text="{l:T clone.restore}"/></StackPanel>
+                        </Button>
+                    </WrapPanel>
+                    <TextBlock Text="{l:T clone.restoreNote}" Style="{StaticResource Muted}"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0" Visibility="{Binding IsBusy, Converter={StaticResource Vis}}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource DangerOutlineButton}" Command="{Binding CancelCommand}" Content="{l:T common.cancel}" Padding="12,5" Margin="10,0,0,0"/>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressPercent, StringFormat={}{0:0.0}%}" FontWeight="Bold" FlowDirection="LeftToRight" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <ProgressBar Value="{Binding ProgressPercent, Mode=OneWay}" Maximum="100"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource FlatCard}" Margin="0,14,0,0" Visibility="{Binding HasResult, Converter={StaticResource Vis}}">
+                <TextBlock Text="{Binding ResultText}" LineHeight="22" FontWeight="SemiBold"/>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

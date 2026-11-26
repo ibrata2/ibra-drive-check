@@ -287,3 +287,94 @@ public static partial class Tests
         Assert.Eq(IbraDriveCheck.Core.Engine.CapacitySource.None, plan.Source, "none");
     }
 }
+
+public static partial class Tests
+{
+    static Dictionary<string, byte[]> MakeFatWithFiles(string img, int seed)
+    {
+        Run("mkfs.fat", $"-F 32 -C -n IBRA \"{img}\" 65536");
+        var files = new Dictionary<string, byte[]>
+        {
+            ["photo.jpg"] = SampleFiles.Jpeg(70_000, seed),
+            ["Work/report.pdf"] = SampleFiles.Pdf(30_000, seed + 1),
+        };
+        Run("mmd", $"-i \"{img}\" ::Work", MtoolsEnv);
+        foreach (var (rel, data) in files)
+        {
+            string local = img + "." + Path.GetFileName(rel);
+            File.WriteAllBytes(local, data);
+            MCopy(img, local, rel);
+        }
+        return files;
+    }
+
+    static void RescueAndCompare(string diskImg, Dictionary<string, byte[]> files, string expectFs, string expectBoot)
+    {
+        using var disk = new FileVolumeSource(diskImg);
+        Assert.True(RecoveryEngine.DetectFileSystem(disk) != expectFs || expectBoot == "table", "really damaged/unreadable at offset 0");
+        var cands = RescueEngine.Find(disk);
+        var c = cands.FirstOrDefault(x => x.FileSystem == expectFs);
+        Assert.True(c != null, "candidate found: " + string.Join(", ", cands.Select(x => $"{x.FileSystem}@{x.Offset}/{x.Boot}")));
+        Assert.Eq(expectBoot, c!.Boot, "boot source");
+        using var vol = RescueEngine.Open(disk, c);
+        var scan = RecoveryEngine.Scan(vol, false, new RecoveryProgress(), default, includeLive: true);
+        string outDir = Temp("rescued");
+        RecoveryEngine.Recover(vol, scan.Items, outDir, new RecoveryProgress(), default);
+        foreach (var (rel, data) in files)
+        {
+            string path = Path.Combine(new[] { outDir }.Concat(rel.Split('/')).ToArray());
+            Assert.True(File.Exists(path), $"rescued {rel} ({string.Join(", ", scan.Items.Select(i => i.FullPath))})");
+            Assert.Eq(SampleFiles.Hash(data), SampleFiles.Hash(path), "content " + rel);
+        }
+        Assert.True(scan.Items.All(i => !i.Deleted), "live files listed as existing");
+    }
+
+    public static void T_Rescue_FAT32_Destroyed_Boot_Sector()
+    {
+        string img = Path.Combine(Temp("rescue1"), "flash.img");
+        var files = MakeFatWithFiles(img, 31);
+        using (var fs = new FileStream(img, FileMode.Open, FileAccess.Write)) fs.Write(new byte[512]);   // "تطلب تهيئة"
+        RescueAndCompare(img, files, "FAT32", "backup");
+    }
+
+    public static void T_Rescue_Lost_Partition_Table()
+    {
+        string dir = Temp("rescue2");
+        string part = Path.Combine(dir, "part.img");
+        var files = MakeFatWithFiles(part, 41);
+        string disk = Path.Combine(dir, "disk.img");
+        using (var o = File.Create(disk))
+        {
+            var mbr = new byte[1 << 20];      // جدول أقسام ممسوح بالكامل
+            o.Write(mbr);
+            using var i = File.OpenRead(part);
+            i.CopyTo(o);
+        }
+        RescueAndCompare(disk, files, "FAT32", "primary");
+    }
+
+    public static void T_Rescue_NTFS_Backup_Boot_From_Partition_Table()
+    {
+        string dir = Temp("rescue3");
+        string part = Path.Combine(dir, "ntfs.img");
+        using (var f = File.Create(part)) f.SetLength(64L << 20);
+        Run("mkntfs", $"-F -Q -q -s 512 -c 4096 \"{part}\"");
+        var data = SampleFiles.Pdf(200_000, 77);
+        File.WriteAllBytes(Path.Combine(dir, "x"), data);
+        Run("ntfscp", $"-f -q \"{part}\" \"{Path.Combine(dir, "x")}\" \"important.pdf\"");
+        string disk = Path.Combine(dir, "disk.img");
+        using (var o = File.Create(disk))
+        {
+            var mbr = new byte[1 << 20];
+            mbr[446 + 4] = 0x07;
+            BitConverter.GetBytes(2048u).CopyTo(mbr, 446 + 8);
+            BitConverter.GetBytes((uint)((64L << 20) / 512)).CopyTo(mbr, 446 + 12);
+            mbr[510] = 0x55; mbr[511] = 0xAA;
+            o.Write(mbr);
+            var bytes = File.ReadAllBytes(part);
+            Array.Clear(bytes, 0, 512);        // قطاع إقلاع NTFS تالف
+            o.Write(bytes);
+        }
+        RescueAndCompare(disk, new() { ["important.pdf"] = data }, "NTFS", "backup");
+    }
+}

@@ -126,6 +126,7 @@ public sealed class ScannerViewModel : ObservableObject
         PauseCommand = new RelayCommand(Pause, () => CanPause);
         ResumeCommand = new RelayCommand(Resume, () => CanResume);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
+        MainViewModel.I.CancelCommands.Add(CancelCommand);
         RestoreCommand = new RelayCommand(() => _ = RestoreAsync(), () => HasPendingRestore && !IsRunning);
         DeleteLeftoversCommand = new RelayCommand(DeleteLeftovers, () => HasLeftovers && !IsRunning);
         RestartAdminCommand = new RelayCommand(() => Shell.RestartElevated("--page scanner"));

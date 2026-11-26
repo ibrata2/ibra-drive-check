@@ -26,6 +26,8 @@ public sealed class BlockVolumeSource : IVolumeSource
     }
 
     public long Size => _dev.Size;
+    /// <summary>عدد القطاعات التي تعذرت قراءتها (مُلئت بأصفار).</summary>
+    public long BadSectors;
 
     public void ReadAt(long offset, Span<byte> destination)
     {
@@ -49,7 +51,7 @@ public sealed class BlockVolumeSource : IVolumeSource
                 {
                     var one = _buf.Slice((int)s, _align);
                     try { _dev.Read(start + s, one); }
-                    catch (BlockIoException) { one.Clear(); }
+                    catch (BlockIoException) { one.Clear(); Interlocked.Increment(ref BadSectors); }
                 }
             }
             int got = (int)Math.Min(want, len - skip);
@@ -117,6 +119,8 @@ public sealed class RecoveryItem
     public List<Extent> Extents { get; set; } = new();
     public byte[]? Resident { get; set; }
     public string Source { get; set; } = "";
+    /// <summary>false = ملف موجود (يظهر عند إنقاذ وحدة لا تفتح).</summary>
+    public bool Deleted { get; set; } = true;
     public string Extension => IsDirectory ? "" : Path.GetExtension(Name).TrimStart('.').ToLowerInvariant();
     public string FullPath => Dir.Length == 0 ? Name : Dir + "/" + Name;
 }
@@ -148,7 +152,7 @@ public sealed class RecoveryProgress
     public double Fraction => Math.Clamp((double)Interlocked.Read(ref _done) / Interlocked.Read(ref _total), 0, 1);
 }
 
-internal static class Le
+public static class Le
 {
     public static ushort U16(ReadOnlySpan<byte> b, int o) => (ushort)(b[o] | b[o + 1] << 8);
     public static uint U32(ReadOnlySpan<byte> b, int o) => (uint)(b[o] | b[o + 1] << 8 | b[o + 2] << 16 | b[o + 3] << 24);

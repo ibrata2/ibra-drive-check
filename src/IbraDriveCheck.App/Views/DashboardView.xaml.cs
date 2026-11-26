@@ -14,6 +14,11 @@ public partial class DashboardView : UserControl
 
     private async void OnRefresh(object sender, RoutedEventArgs e) => await MainViewModel.I.RefreshDrivesAsync(false);
 
+    private void OnQuick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is string key) MainViewModel.I.Navigate(key);
+    }
+
     private void OnScan(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is DriveItem d)

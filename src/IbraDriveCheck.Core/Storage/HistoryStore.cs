@@ -90,6 +90,11 @@ public sealed class AppSettings
     public bool NotifyDisconnect { get; set; } = true;
     public int SpeedTestMB { get; set; } = 256;
     public bool ReadOnlyFullSurface { get; set; } = true;
+    public bool MonitorEnabled { get; set; } = false;
+    public bool StartWithWindows { get; set; } = false;
+    public int TempLimit { get; set; } = 60;
+    public int MonitorMinutes { get; set; } = 5;
+    public bool TrayHintShown { get; set; } = false;
 
     public static AppSettings Load(string? path = null)
     {

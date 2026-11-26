@@ -14,10 +14,13 @@ public sealed class NtfsScanner
     public long TotalClusters { get; private set; }
     private byte[]? _bitmap;
 
-    public NtfsScanner(IVolumeSource src, RecoveryProgress? progress = null)
+    private readonly bool _live;
+
+    public NtfsScanner(IVolumeSource src, RecoveryProgress? progress = null, bool includeLive = false)
     {
         _src = src;
         _p = progress ?? new RecoveryProgress();
+        _live = includeLive;
     }
 
     public static bool Detect(ReadOnlySpan<byte> boot) => boot.Length >= 512 && boot.Slice(3, 8).SequenceEqual("NTFS    "u8);
@@ -108,7 +111,7 @@ public sealed class NtfsScanner
                     if (recNo == 6) bitmapRec = rec;
                     if (rec.BaseRef != 0)
                     {
-                        if (!rec.InUse && rec.Data.Count > 0)
+                        if ((!rec.InUse || _live) && rec.Data.Count > 0)
                         {
                             if (!extData.TryGetValue(rec.BaseRef, out var l)) extData[rec.BaseRef] = l = new();
                             l.AddRange(rec.Data);
@@ -116,7 +119,7 @@ public sealed class NtfsScanner
                         continue;
                     }
                     if (rec.IsDir && rec.Name != null) dirs[recNo] = new DirInfo(rec.Name, rec.ParentRef, rec.Seq, rec.InUse);
-                    if (!rec.InUse && rec.Name != null && recNo >= 24) deleted.Add(rec);
+                    if (rec.Name != null && recNo >= 24 && (!rec.InUse || _live && !rec.IsDir && !rec.Name.StartsWith('$'))) deleted.Add(rec);
                 }
                 pos += (long)n * RecordSize;
                 _p.Set(recNo);
@@ -143,6 +146,7 @@ public sealed class NtfsScanner
                 Created = r.Created,
                 Modified = r.Modified,
                 Source = "NTFS",
+                Deleted = !r.InUse,
             };
             if (!r.IsDir)
             {
@@ -166,7 +170,9 @@ public sealed class NtfsScanner
                         item.Extents.Add(new Extent(run.Offset, len));
                         remaining -= len;
                     }
-                    if (item.Chance != RecoveryChance.Unsupported)
+                    if (item.Chance != RecoveryChance.Unsupported && !item.Deleted)
+                        item.Chance = RecoveryChance.Good;
+                    else if (item.Chance != RecoveryChance.Unsupported)
                         item.Chance = item.Size == 0 ? RecoveryChance.Good : remaining > 0 && item.Extents.Count == 0 ? RecoveryChance.Unsupported : ChanceFor(item.Extents);
                 }
             }

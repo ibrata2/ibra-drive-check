@@ -71,6 +71,7 @@ public sealed class SpeedViewModel : ObservableObject
         _timer.Tick += (_, _) => Tick();
         StartCommand = new RelayCommand(() => _ = StartAsync(), () => !IsRunning && Main.IsIdle && Main.SelectedDrive != null && (SelectedVolume != null || Volumes.Count == 0));
         CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsRunning);
+        MainViewModel.I.CancelCommands.Add(CancelCommand);
         Main.SelectedDriveChanged += LoadVolumes;
         Loc.I.LanguageChanged += () =>
         {

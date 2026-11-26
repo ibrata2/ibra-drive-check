@@ -41,15 +41,6 @@ public sealed class DriveItem : ObservableObject
     public void RefreshTexts() => RaiseAll();
 }
 
-public sealed class NavItem : ObservableObject
-{
-    public string Key { get; init; } = "";
-    public string Glyph { get; init; } = "";
-    public string TitleKey => "nav." + Key;
-    public string Title => Loc.T(TitleKey);
-    public void Refresh() => Raise(nameof(Title));
-}
-
 public sealed class MainViewModel : ObservableObject
 {
     public static MainViewModel I { get; } = new();
@@ -60,21 +51,8 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<DriveItem> Drives { get; } = new();
     public NotifyService? Notify { get; set; }
 
-    public List<NavItem> Nav { get; } = new()
-    {
-        new() { Key = "dashboard", Glyph = "" },
-        new() { Key = "scanner", Glyph = "" },
-        new() { Key = "fake", Glyph = "" },
-        new() { Key = "speed", Glyph = "" },
-        new() { Key = "health", Glyph = "" },
-        new() { Key = "tools", Glyph = "\uE90F" },
-        new() { Key = "recovery", Glyph = "\uE777" },
-        new() { Key = "wipe", Glyph = "\uE75C" },
-        new() { Key = "history", Glyph = "" },
-        new() { Key = "reports", Glyph = "" },
-        new() { Key = "settings", Glyph = "" },
-        new() { Key = "about", Glyph = "" },
-    };
+    /// <summary>أزرار الإلغاء لكل الصفحات (للإغلاق الآمن أثناء أي عملية).</summary>
+    public List<RelayCommand> CancelCommands { get; } = new();
 
     public bool IsElevated { get; } = DriveEnumerator.IsElevated;
 
@@ -117,7 +95,6 @@ public sealed class MainViewModel : ObservableObject
         Loc.I.LanguageChanged += () =>
         {
             foreach (var d in Drives) d.RefreshTexts();
-            foreach (var n in Nav) n.Refresh();
             RaiseStats();
         };
     }

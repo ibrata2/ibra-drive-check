@@ -20,10 +20,13 @@ public sealed class ExFatScanner
     private long _id = 1;
     private readonly HashSet<uint> _visited = new();
 
-    public ExFatScanner(IVolumeSource src, RecoveryProgress? progress = null)
+    private readonly bool _live;
+
+    public ExFatScanner(IVolumeSource src, RecoveryProgress? progress = null, bool includeLive = false)
     {
         _src = src;
         _p = progress ?? new RecoveryProgress();
+        _live = includeLive;
     }
 
     public static bool Detect(ReadOnlySpan<byte> boot) => boot.Length >= 512 && boot.Slice(3, 8).SequenceEqual("EXFAT   "u8);
@@ -206,6 +209,28 @@ public sealed class ExFatScanner
 
             if (!deleted)
             {
+                if (_live && !isDir)
+                {
+                    var live = new RecoveryItem
+                    {
+                        Id = _id++, Name = name, Dir = path, Size = len, Deleted = false, Chance = RecoveryChance.Good, Source = "exFAT",
+                        Created = Le.Dos((ushort)(ct32 >> 16), (ushort)ct32), Modified = Le.Dos((ushort)(mt32 >> 16), (ushort)mt32),
+                    };
+                    long remaining = len;
+                    if (len > 0 && Valid(first))
+                        foreach (var c in ClustersOf(first, len, nfc))
+                        {
+                            if (remaining <= 0) break;
+                            long l = Math.Min(ClusterSize, remaining);
+                            long off = ClusterOffset(c);
+                            if (live.Extents.Count > 0 && live.Extents[^1].Offset + live.Extents[^1].Length == off)
+                                live.Extents[^1] = new Extent(live.Extents[^1].Offset, live.Extents[^1].Length + l);
+                            else live.Extents.Add(new Extent(off, l));
+                            remaining -= l;
+                        }
+                    if (remaining > 0) live.Chance = RecoveryChance.Partial;
+                    scan.Items.Add(live);
+                }
                 if (isDir && Valid(first) && len > 0 && !_visited.Contains(first))
                 {
                     foreach (var c in ClustersOf(first, len, nfc)) _visited.Add(c);

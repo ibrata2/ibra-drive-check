@@ -71,6 +71,11 @@ public static class Shell
         try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); } catch { }
     }
 
+    public static void Open(string file, string args)
+    {
+        try { Process.Start(new ProcessStartInfo(file, args) { UseShellExecute = true }); } catch { }
+    }
+
     /// <summary>إعادة تشغيل البرنامج بصلاحيات المسؤول (يظهر طلب UAC من ويندوز).</summary>
     public static bool RestartElevated(string args)
     {
@@ -78,6 +83,7 @@ public static class Shell
         {
             var exe = Environment.ProcessPath!;
             Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = true, Verb = "runas" });
+            MainWindow.ReallyExit = true;
             Application.Current.Shutdown();
             return true;
         }
@@ -93,7 +99,9 @@ public sealed class NotifyService : IDisposable
 {
     private System.Windows.Forms.NotifyIcon? _icon;
 
-    public NotifyService()
+    private readonly System.Windows.Forms.ToolStripMenuItem? _open, _exit;
+
+    public NotifyService(Action open, Action exit)
     {
         try
         {
@@ -103,15 +111,27 @@ public sealed class NotifyService : IDisposable
                 Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!),
                 Visible = true,
             };
-            _icon.DoubleClick += (_, _) =>
+            _icon.DoubleClick += (_, _) => open();
+            var menu = new System.Windows.Forms.ContextMenuStrip { RightToLeft = Loc.I.IsArabic ? System.Windows.Forms.RightToLeft.Yes : System.Windows.Forms.RightToLeft.No };
+            _open = new System.Windows.Forms.ToolStripMenuItem(Loc.T("tray.open"), null, (_, _) => open());
+            _exit = new System.Windows.Forms.ToolStripMenuItem(Loc.T("tray.exit"), null, (_, _) => exit());
+            menu.Items.Add(_open);
+            menu.Items.Add(_exit);
+            _icon.ContextMenuStrip = menu;
+            Loc.I.LanguageChanged += () =>
             {
-                var w = Application.Current.MainWindow;
-                if (w == null) return;
-                if (w.WindowState == WindowState.Minimized) w.WindowState = WindowState.Normal;
-                w.Activate();
+                if (_open != null) _open.Text = Loc.T("tray.open");
+                if (_exit != null) _exit.Text = Loc.T("tray.exit");
+                menu.RightToLeft = Loc.I.IsArabic ? System.Windows.Forms.RightToLeft.Yes : System.Windows.Forms.RightToLeft.No;
             };
         }
         catch { _icon = null; }
+    }
+
+    /// <summary>نص يظهر عند تمرير الماوس على الأيقونة (حد أقصى 63 حرفاً).</summary>
+    public void SetTooltip(string text)
+    {
+        try { if (_icon != null) _icon.Text = text.Length > 63 ? text[..63] : text; } catch { }
     }
 
     public void Show(string title, string text, bool warning = false)

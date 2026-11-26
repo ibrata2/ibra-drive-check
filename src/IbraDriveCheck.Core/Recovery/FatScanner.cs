@@ -21,10 +21,13 @@ public sealed class FatScanner
     private long _id = 1;
     private readonly HashSet<uint> _visited = new();
 
-    public FatScanner(IVolumeSource src, RecoveryProgress? progress = null)
+    private readonly bool _live;
+
+    public FatScanner(IVolumeSource src, RecoveryProgress? progress = null, bool includeLive = false)
     {
         _src = src;
         _p = progress ?? new RecoveryProgress();
+        _live = includeLive;
     }
 
     /// <summary>يرجع "FAT32" أو "FAT16" أو "FAT12" أو null.</summary>
@@ -212,6 +215,7 @@ public sealed class FatScanner
 
             if (!deleted)
             {
+                if (_live && !isDir) scan.Items.Add(LiveItem(name, path, start, size, data, i));
                 if (isDir && ValidCluster(start) && !_visited.Contains(start))
                 {
                     var chain = Chain(start);
@@ -271,6 +275,30 @@ public sealed class FatScanner
                 if (buf.Count > 0) ParseDir(buf.ToArray(), Join(path, name), true, depth + 1, scan, ct);
             }
         }
+    }
+
+    private RecoveryItem LiveItem(string name, string path, uint start, long size, byte[] data, int i)
+    {
+        var item = new RecoveryItem
+        {
+            Id = _id++, Name = name, Dir = path, Size = size, Deleted = false, Chance = RecoveryChance.Good,
+            Modified = Le.Dos(Le.U16(data, i + 24), Le.U16(data, i + 22)),
+            Created = Le.Dos(Le.U16(data, i + 16), Le.U16(data, i + 14)),
+            Source = IsFat32 ? "FAT32" : "FAT16",
+        };
+        long remaining = size;
+        foreach (var c in size > 0 ? Chain(start) : new List<uint>())
+        {
+            if (remaining <= 0) break;
+            long len = Math.Min(ClusterSize, remaining);
+            long off = ClusterOffset(c);
+            if (item.Extents.Count > 0 && item.Extents[^1].Offset + item.Extents[^1].Length == off)
+                item.Extents[^1] = new Extent(item.Extents[^1].Offset, item.Extents[^1].Length + len);
+            else item.Extents.Add(new Extent(off, len));
+            remaining -= len;
+        }
+        if (remaining > 0) item.Chance = RecoveryChance.Partial;
+        return item;
     }
 
     private static bool HasEnd(byte[] d)

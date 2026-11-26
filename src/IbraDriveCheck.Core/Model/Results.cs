@@ -10,6 +10,7 @@ public enum ScanKind
     Speed,            // اختبار السرعة
     Health,           // صحة وحدة التخزين (SMART)
     Purchase,         // الفحص الشامل للشراء: الصحة + كشف السعة + السرعة + حكم نهائي
+    BurnIn,           // اختبار التحمل الطويل
 }
 
 public enum Verdict
