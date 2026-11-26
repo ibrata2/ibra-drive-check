@@ -38,7 +38,20 @@ public sealed class BlockVolumeSource : IVolumeSource
             long len = (skip + want + _align - 1) / _align * _align;
             len = Math.Min(len, (Size - start) / _align * _align);
             if (len <= skip) { destination.Clear(); return; }
-            _dev.Read(start, _buf.Slice(0, (int)len));
+            try
+            {
+                _dev.Read(start, _buf.Slice(0, (int)len));
+            }
+            catch (BlockIoException)
+            {
+                // قطاعات تالفة أو نهاية القسم: نقرأ قطاعاً قطاعاً ونملأ غير المقروء بالأصفار
+                for (long s = 0; s < len; s += _align)
+                {
+                    var one = _buf.Slice((int)s, _align);
+                    try { _dev.Read(start + s, one); }
+                    catch (BlockIoException) { one.Clear(); }
+                }
+            }
             int got = (int)Math.Min(want, len - skip);
             _buf.Slice(skip, got).CopyTo(destination);
             destination = destination[got..];

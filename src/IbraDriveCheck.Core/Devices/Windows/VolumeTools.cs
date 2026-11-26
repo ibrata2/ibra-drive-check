@@ -149,7 +149,7 @@ public static class VolumeTools
         if (!locked) throw new VolumeInUseException(letter);
         try
         {
-            Native.IoctlNoData(dev.Handle, Native.FSCTL_DISMOUNT_VOLUME);
+            // القفل يفرغ الكاش ويمنع أي برنامج آخر؛ نكتب ثم نفصل القسم حتى يعيد ويندوز قراءة المجلدات من القرص
             using var src = new BlockVolumeSource(dev, ownsDevice: false);
             using var wbuf = new AlignedBuffer(1 << 20, Math.Max(4096, dev.Alignment));
             int n = TraceCleaner.ScrubDirectoryEntries(src, (offset, data) =>
@@ -163,6 +163,7 @@ public static class VolumeTools
                 }
             }, fs);
             dev.Flush();
+            Native.IoctlNoData(dev.Handle, Native.FSCTL_DISMOUNT_VOLUME);
             return n;
         }
         finally

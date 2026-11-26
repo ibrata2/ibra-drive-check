@@ -33,7 +33,7 @@ foreach (var t in tests)
     {
         fail++;
         Console.WriteLine($"  FAIL  {t.Name}: {ex.InnerException?.Message}");
-        Console.WriteLine(ex.InnerException?.StackTrace?.Split('\n').FirstOrDefault(l => l.Contains("Tests.cs") || l.Contains("Program.cs"))?.Trim());
+        foreach (var line in (ex.InnerException?.StackTrace ?? "").Split('\n').Take(6)) Console.WriteLine("        " + line.Trim());
     }
 }
 Console.WriteLine($"\n{pass} passed, {fail} failed, {skip} skipped in {total.Elapsed.TotalSeconds:0.0}s");
