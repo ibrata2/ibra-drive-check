@@ -27,7 +27,7 @@
                         <TextBlock Text="{Binding HealthText}" FontSize="54" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" FlowDirection="LeftToRight"/>
                         <ProgressBar Value="{Binding HealthPercent, Mode=OneWay}" Maximum="100" Width="220" Margin="0,4,0,12"/>
                         <TextBlock Text="{Binding YearsText}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center"/>
-                        <Button Style="{StaticResource BaseButton}" Command="{Binding ReadCommand}" Padding="18,9" Margin="0,0,10,8" HorizontalAlignment="Center" Margin="0,14,0,0">
+                        <Button Style="{StaticResource BaseButton}" Command="{Binding ReadCommand}" Padding="18,9" HorizontalAlignment="Center" Margin="0,14,0,0">
                             <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Icon}" Text="&#xE72C;" FontSize="13" Margin="0,0,8,0"/><TextBlock Text="{l:T common.refresh}"/></StackPanel>
                         </Button>
                     </StackPanel>
